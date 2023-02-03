@@ -6,7 +6,7 @@ module.exports = (client) => {
 
   for (const eventFolder of eventFolders) {
     let eventFiles = getAllFiles(eventFolder);
-    eventFiles = eventFiles.sort((a, b) => a > b);
+    eventFiles.sort();
 
     const eventName = eventFolder.replace(/\\/g, '/').split('/').pop();
 
