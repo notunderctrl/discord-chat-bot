@@ -1,19 +1,31 @@
-const { Client, Message } = require('discord.js');
+require('dotenv').config();
+const { Client, IntentsBitField } = require('discord.js');
 const { Configuration, OpenAIApi } = require('openai');
-const { chatBotChannel } = require('../../../config.json');
 
-/**
- *
- * @param { Client } client
- * @param { Message } message
- * @returns
- */
+const client = new Client({
+  intents: [
+    IntentsBitField.Flags.Guilds,
+    IntentsBitField.Flags.GuildMembers,
+    IntentsBitField.Flags.GuildMessages,
+    IntentsBitField.Flags.MessageContent,
+  ],
+});
+
+const configuration = new Configuration({
+  organization: process.env.OPENAI_ORGANIZATION,
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
+
+// EVENTS
+client.on('ready', (c) => {
+  console.log(`Logged in as ${c.user.tag}!`);
+});
 
 const msgLengthLimit = 300;
-
-module.exports = async (client, message) => {
+client.on('message', async (message) => {
   if (message.author.bot) return;
-  if (message.channel.id !== chatBotChannel) return;
+  if (message.channel.id !== process.env.CHAT_BOT_CHANNEL) return;
   if (message.content.startsWith('!')) return;
 
   await message.channel.sendTyping();
@@ -22,12 +34,6 @@ module.exports = async (client, message) => {
     message.reply("Whoa now, I'm not going to read all that. Maybe summarize?");
     return;
   }
-
-  const configuration = new Configuration({
-    organization: process.env.OPENAI_ORGANIZATION,
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-  const openai = new OpenAIApi(configuration);
 
   let prevMessages = await message.channel.messages.fetch({ limit: 25 });
   prevMessages = prevMessages.sort((a, b) => a - b);
@@ -40,7 +46,7 @@ module.exports = async (client, message) => {
     if (msg.author.id === message.author.id || msg.author.id === client.user.id) {
       if (msg.content.startsWith('!')) return;
 
-      conversationLog += `${msg.author.username}: ${msg.content}\n`;
+      conversationLog += `\n${msg.author.username}: ${msg.content}`;
     }
   });
 
@@ -48,16 +54,19 @@ module.exports = async (client, message) => {
     model: 'text-davinci-003',
     prompt: `${client.user.username} is a friendly chatbot.
 
-             ${client.user.username}: Hello, how can I help you?
-             ${conversationLog}
+             ${client.user.username}: Hello, how can I help you?${conversationLog}
              ${client.user.username}:
              `,
     max_tokens: 200,
   });
 
   if (result.data.choices[0].finish_reason === 'length') {
-    message.reply(result.data.choices[0].text + '...*it costs a lot for me to speak more than this.*');
+    message.reply(
+      result.data.choices[0].text + '...*it costs a lot for me to speak more than this.*'
+    );
   } else {
     message.reply(result.data.choices[0].text);
   }
-};
+});
+
+client.login(process.env.TOKEN);
