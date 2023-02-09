@@ -23,7 +23,7 @@ client.on('ready', (c) => {
 });
 
 const msgLengthLimit = 300;
-client.on('message', async (message) => {
+client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
   if (message.channel.id !== process.env.CHAT_BOT_CHANNEL) return;
   if (message.content.startsWith('!')) return;
