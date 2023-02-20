@@ -22,7 +22,7 @@ client.on('ready', (c) => {
   console.log(`Logged in as ${c.user.tag}!`);
 });
 
-const msgLengthLimit = 300;
+const msgLengthLimit = 1000;
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
   if (message.channel.id !== process.env.CHAT_BOT_CHANNEL) return;
@@ -35,19 +35,17 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  let prevMessages = await message.channel.messages.fetch({ limit: 25 });
+  let prevMessages = await message.channel.messages.fetch({ limit: 50 });
   prevMessages = prevMessages.sort((a, b) => a - b);
 
   let conversationLog = '';
 
   prevMessages.forEach((msg) => {
     if (msg.content.length > msgLengthLimit) return;
+    if (msg.author.id !== client.user.id && message.author.bot) return;
+    if (msg.content.startsWith('!')) return;
 
-    if (msg.author.id === message.author.id || msg.author.id === client.user.id) {
-      if (msg.content.startsWith('!')) return;
-
-      conversationLog += `\n${msg.author.username}: ${msg.content}`;
-    }
+    conversationLog += `\n${msg.author.username}: ${msg.content}`;
   });
 
   const result = await openai.createCompletion({
@@ -57,7 +55,7 @@ client.on('messageCreate', async (message) => {
              ${client.user.username}: Hello, how can I help you?${conversationLog}
              ${client.user.username}:
              `,
-    max_tokens: 200,
+    max_tokens: 350,
   });
 
   if (result.data.choices[0].finish_reason === 'length') {
