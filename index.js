@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { Client, IntentsBitField } = require('discord.js');
 const { Configuration, OpenAIApi } = require('openai');
+const conversationContext = require('./context');
 
 const client = new Client({
   intents: [
@@ -24,46 +25,48 @@ client.on('ready', (c) => {
 
 const msgLengthLimit = 1000;
 client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
-  if (message.channel.id !== process.env.CHAT_BOT_CHANNEL) return;
-  if (message.content.startsWith('!')) return;
+  try {
+    if (message.author.bot) return;
+    if (message.channel.id !== process.env.CHAT_BOT_CHANNEL) return;
+    if (message.content.startsWith('!')) return;
 
-  await message.channel.sendTyping();
+    await message.channel.sendTyping();
 
-  if (message.content.length > msgLengthLimit) {
-    message.reply("Whoa now, I'm not going to read all that. Maybe summarize?");
-    return;
-  }
+    if (message.content.length > msgLengthLimit) {
+      message.reply("Whoa now, I'm not going to read all that. Maybe summarize?");
+      return;
+    }
 
-  let prevMessages = await message.channel.messages.fetch({ limit: 50 });
-  prevMessages = prevMessages.sort((a, b) => a - b);
+    let prevMessages = await message.channel.messages.fetch({ limit: 50 });
+    prevMessages = prevMessages.sort((a, b) => a - b);
 
-  let conversationLog = '';
+    let conversationLog = '';
 
-  prevMessages.forEach((msg) => {
-    if (msg.content.length > msgLengthLimit) return;
-    if (msg.author.id !== client.user.id && message.author.bot) return;
-    if (msg.content.startsWith('!')) return;
+    prevMessages.forEach((msg) => {
+      if (msg.content.length > msgLengthLimit) return;
+      if (msg.author.id !== client.user.id && message.author.bot) return;
+      if (msg.content.startsWith('!')) return;
 
-    conversationLog += `\n${msg.author.username}: ${msg.content}`;
-  });
+      conversationLog += `\n${msg.author.tag}: ${msg.content}`;
+    });
 
-  const result = await openai.createCompletion({
-    model: 'text-davinci-003',
-    prompt: `${client.user.username} is a friendly chatbot.
-
-             ${client.user.username}: Hello, how can I help you?${conversationLog}
-             ${client.user.username}:
+    const result = await openai.createCompletion({
+      model: 'text-davinci-003',
+      prompt: `${conversationContext(client.user.tag)}
+             ${conversationLog}
+             ${client.user.tag}:
              `,
-    max_tokens: 350,
-  });
+      max_tokens: 256,
+      temperature: 0.7,
+    });
 
-  if (result.data.choices[0].finish_reason === 'length') {
-    message.reply(
-      result.data.choices[0].text + '...*it costs a lot for me to speak more than this.*'
-    );
-  } else {
-    message.reply(result.data.choices[0].text);
+    if (result.data.choices[0].finish_reason === 'length') {
+      message.reply(result.data.choices[0].text + '...');
+    } else {
+      message.reply(result.data.choices[0].text);
+    }
+  } catch (error) {
+    console.log(`Error: ${error}`);
   }
 });
 
