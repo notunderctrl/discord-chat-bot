@@ -1,7 +1,6 @@
 require('dotenv').config();
 const { Client, IntentsBitField } = require('discord.js');
 const { Configuration, OpenAIApi } = require('openai');
-const conversationContext = require('./context');
 
 const client = new Client({
   intents: [
@@ -37,26 +36,22 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
-    let prevMessages = await message.channel.messages.fetch({ limit: 50 });
+    let prevMessages = await message.channel.messages.fetch({ limit: 25 });
     prevMessages = prevMessages.sort((a, b) => a - b);
 
-    let conversationLog = '';
+    let conversationLog = [];
 
     prevMessages.forEach((msg) => {
       if (msg.content.length > msgLengthLimit) return;
       if (msg.author.id !== client.user.id && message.author.bot) return;
       if (msg.content.startsWith('!')) return;
 
-      conversationLog += `\n${msg.author.tag}: ${msg.content}`;
+      conversationLog.push(`${msg.author.tag}: ${msg.content}`);
     });
 
     const result = await openai.createChatCompletion({
       model: 'gpt-3.5-turbo',
-      prompt: `${conversationContext(client.user.tag)}
-             ${conversationLog}
-             ${client.user.tag}:
-             `,
-      max_tokens: 256,
+      messages: conversationLog,
       temperature: 0.7,
     });
 
