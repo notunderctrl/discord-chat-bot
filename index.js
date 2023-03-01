@@ -50,7 +50,7 @@ client.on('messageCreate', async (message) => {
       conversationLog += `\n${msg.author.tag}: ${msg.content}`;
     });
 
-    const result = await openai.createCompletion({
+    const result = await openai.createChatCompletion({
       model: 'gpt-3.5-turbo',
       prompt: `${conversationContext(client.user.tag)}
              ${conversationLog}
