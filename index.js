@@ -47,7 +47,6 @@ client.on('messageCreate', async (message) => {
       if (msg.content.startsWith('!')) return;
 
       conversationLog.push({
-        name: `${msg.author.username}`,
         role: 'user',
         content: `${msg.content}`,
       });
