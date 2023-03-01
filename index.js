@@ -46,19 +46,18 @@ client.on('messageCreate', async (message) => {
       if (msg.author.id !== client.user.id && message.author.bot) return;
       if (msg.content.startsWith('!')) return;
 
-      conversationLog.push(`${msg.author.tag}: ${msg.content}`);
+      conversationLog.push({ role: 'user', content: `${msg.content}` });
     });
 
     const result = await openai.createChatCompletion({
       model: 'gpt-3.5-turbo',
       messages: conversationLog,
-      temperature: 0.7,
     });
 
     if (result.data.choices[0].finish_reason === 'length') {
-      message.reply(result.data.choices[0].text + '...');
+      message.reply(result.data.choices[0].message + '...');
     } else {
-      message.reply(result.data.choices[0].text);
+      message.reply(result.data.choices[0].message);
     }
   } catch (error) {
     console.log(`Error: ${error}`);
