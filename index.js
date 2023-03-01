@@ -46,7 +46,11 @@ client.on('messageCreate', async (message) => {
       if (msg.author.id !== client.user.id && message.author.bot) return;
       if (msg.content.startsWith('!')) return;
 
-      conversationLog.push({ role: 'user', content: `${msg.content}` });
+      conversationLog.push({
+        name: `${msg.author.username}`,
+        role: 'user',
+        content: `${msg.content}`,
+      });
     });
 
     const result = await openai.createChatCompletion({
