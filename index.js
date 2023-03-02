@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { Client, IntentsBitField } = require('discord.js');
 const { Configuration, OpenAIApi } = require('openai');
+const context = require('./context');
 
 const client = new Client({
   intents: [
@@ -22,7 +23,7 @@ client.on('ready', (c) => {
   console.log(`Logged in as ${c.user.tag}!`);
 });
 
-const msgLengthLimit = 1000;
+const msgLengthLimit = 2000;
 client.on('messageCreate', async (message) => {
   try {
     if (message.author.bot) return;
@@ -36,15 +37,16 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
-    let prevMessages = await message.channel.messages.fetch({ limit: 25 });
+    let prevMessages = await message.channel.messages.fetch({ limit: 75 });
     prevMessages = prevMessages.sort((a, b) => a - b);
 
-    let conversationLog = [];
+    let conversationLog = [{ role: 'system', content: context }];
 
     prevMessages.forEach((msg) => {
+      if (msg.content.startsWith('!')) return;
       if (msg.content.length > msgLengthLimit) return;
       if (msg.author.id !== client.user.id && message.author.bot) return;
-      if (msg.content.startsWith('!')) return;
+      if (msg.author.id !== message.author.id) return;
 
       conversationLog.push({
         role: 'user',
