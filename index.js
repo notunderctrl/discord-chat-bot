@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, IntentsBitField } = require('discord.js');
+const { Client, IntentsBitField, AttachmentBuilder } = require('discord.js');
 const { Configuration, OpenAIApi } = require('openai');
 const context = require('./context');
 
@@ -37,7 +37,7 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
-    let prevMessages = await message.channel.messages.fetch({ limit: 75 });
+    let prevMessages = await message.channel.messages.fetch({ limit: 15 });
     prevMessages = prevMessages.sort((a, b) => a - b);
 
     let conversationLog = [{ role: 'system', content: context }];
@@ -46,25 +46,53 @@ client.on('messageCreate', async (message) => {
       if (msg.content.startsWith('!')) return;
       if (msg.content.length > msgLengthLimit) return;
       if (msg.author.id !== client.user.id && message.author.bot) return;
-      if (msg.author.id !== message.author.id) return;
 
-      conversationLog.push({
-        role: 'user',
-        content: `${msg.content}`,
-      });
+      // If msg is from the bot (client) itself
+      if (msg.author.id === client.user.id) {
+        conversationLog.push({
+          role: 'assistant',
+          content: `${msg.content}`,
+        });
+      }
+
+      // If msg is from a regular user
+      else {
+        if (msg.author.id !== message.author.id) return;
+
+        conversationLog.push({
+          role: 'user',
+          content: `${msg.content}`,
+        });
+      }
     });
 
-    const result = await openai.createChatCompletion({
+    const res = await openai.createChatCompletion({
       model: 'gpt-3.5-turbo',
       messages: conversationLog,
     });
 
-    if (result.data.choices[0].finish_reason === 'length') {
-      message.reply(result.data.choices[0].message + '...');
+    let reply = res.data.choices[0].message?.content;
+
+    if (reply?.length > 2000) {
+      // If the reply length is over 2000 characters, send a txt file.
+      const buffer = Buffer.from(reply, 'utf8');
+      const txtFile = new AttachmentBuilder(buffer, { name: `${message.author.tag}_response.txt` });
+
+      message.reply({ files: [txtFile] }).catch(() => {
+        message.channel.send({ content: `${message.author}`, files: [txtFile] });
+      });
     } else {
-      message.reply(result.data.choices[0].message);
+      message.reply(reply).catch(() => {
+        message.channel.send(`${message.author} ${reply}`);
+      });
     }
   } catch (error) {
+    message.reply(`Something went wrong. Try again in a bit.`).then((msg) => {
+      setTimeout(async () => {
+        await msg.delete().catch(() => null);
+      }, 5000);
+    });
+
     console.log(`Error: ${error}`);
   }
 });

@@ -1,4 +1,4 @@
-The bot used in the [Under Ctrl Discord Server](https://discord.underctrl.io)
+# GPT 3.5 Discord Chat Bot
 
 ### How to use this bot
 
